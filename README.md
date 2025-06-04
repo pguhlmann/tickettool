@@ -1,5 +1,5 @@
 # Tickettool - Platzhalter
-Wenn Sie von meinem Lebenslauf hierhergefunden haben, muss ich Sie leider noch vertrösten.
+Wenn Sie von meinem Lebenslauf hierher gefunden haben, muss ich Sie leider noch vertrösten.
 
 Das Projekt befindet sich aktuell noch im internen GitLab der TU Chemnitz und der Umzug hierhin ist noch in Arbeit.
 Ich bitte um Entschuldigung.
