@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<!--data-bs-theme="dark"-->
+<html lang="de" data-bs-theme="dark">
+	<head>
+		<title>Ticketscanner</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- Bootstrap importieren -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css"/>
+		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+		<!-- Bootstrap Icons-->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+		<!-- QR Code Scanner -->
+		<script src="./html5-qrcode.min.js" type="text/javascript"></script>
+		<!-- eigenes JS -->
+		<script src="./app.js" type="text/javascript"></script>
+		<!-- PWA Manifest -->
+		<link rel="manifest" href="manifest.json">
+		<!-- register service worker -->
+		<script>
+			if ("serviceWorker" in navigator) {
+				navigator.serviceWorker.register("service-worker.js")
+			}
+		</script>
+	</head>
+
+	<body>
+		<div class="container text-center">
+			<h1 class="mt-2">Ticketscanner</h1>
+			<h3>Status: <span id="statusBadge" class="badge" style="background-color: #495057">Nicht Verbunden</span></h3>
+			<button class="btn btn-info my-3" data-bs-toggle="modal" data-bs-target="#guide"><i class="bi bi-info-circle"></i> Info</button>
+			<div id="liveAlertPlaceholder"></div>
+			<span id="uiConnect">
+				<div>
+					<button id="api-scan" class="btn btn-lg btn-primary m-2 m-md-1" onclick="scan(decodeApi)"><i class="bi bi-qr-code-scan"></i> Scan Connect</button>
+					<button id="toggleManualInputForm" class="btn btn-secondary m-2 m-md-1" data-bs-toggle="collapse" data-bs-target="#manualInput">Manuelle Eingabe</button>
+				</div>
+
+				<div id="manualInput" class="collapse">
+					<form>
+						<div class="row py-md-2">
+							<div class="col-md py-1 py-md-0">
+								<input id="mi:url" type="text" class="form-control" placeholder="URL">
+							</div>
+							<div class="col-md py-1 py-md-0">
+								<input id="mi:userToken" type="text" class="form-control" placeholder="Zugangsschlüssel">
+							</div>
+							<div class="col-md-1 py-1 py-md-0">
+								<button id="mi:confirm" class="btn btn-primary" type="button" onclick="processManualInput()">Verbinden</button>
+							</div>
+						</div>
+					</form>
+				</div>
+			</span>
+
+			<span id="uiScan" class="visually-hidden">
+				<div class="my-2">
+					<button id="ticket-scan" class="btn btn-lg btn-primary" type="button" onclick="scan(decodeTicket)" autocomplete="off" disabled> <i class="bi bi-qr-code-scan"></i> Ticket scannen</button>
+				</div>
+			</span>
+
+			<h3 class="text-start mt-3">Chronik:</h3>
+			<table class="table table-striped table-bordered">
+				<thead>
+				  <tr>
+					<th scope="col">Zeit</th>
+					<th scope="col">ID</th>
+					<th scope="col">Aktion</th>
+				  </tr>
+				</thead>
+				<tbody id="history">
+				</tbody>
+			</table>
+		</div>
+
+		<!-- Modals für Scanergebnisse -->
+		<!-- SRD = Scan Result Display -->
+		<!-- NOTE: possible ticket types returned: valid, invalid (used), errors are not displayed as a result. -->
+
+		<!-- ==== LOADING ==== -->
+		<div class="modal" id="srd:loading" data-bs-backdrop="static">
+			<div class="modal-dialog modal-lg modal-fullscreen-md-down">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h4 class="modal-title"></h4>
+						<button type="button" class="btn-close" data-bs-dismiss="modal"></button> <!-- TODO: abort function -->
+					</div>
+					<div class="modal-body">
+						<div class="row my-3">
+							<div class="col"></div>
+							<div class="col-8 col-md-6">
+								<div>
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-hourglass-split w-100 h-100" viewBox="0 0 16 16">
+										<path d="M2.5 15a.5.5 0 1 1 0-1h1v-1a4.5 4.5 0 0 1 2.557-4.06c.29-.139.443-.377.443-.59v-.7c0-.213-.154-.451-.443-.59A4.5 4.5 0 0 1 3.5 3V2h-1a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-1v1a4.5 4.5 0 0 1-2.557 4.06c-.29.139-.443.377-.443.59v.7c0 .213.154.451.443.59A4.5 4.5 0 0 1 12.5 13v1h1a.5.5 0 0 1 0 1h-11zm2-13v1c0 .537.12 1.045.337 1.5h6.326c.216-.455.337-.963.337-1.5V2h-7zm3 6.35c0 .701-.478 1.236-1.011 1.492A3.5 3.5 0 0 0 4.5 13s.866-1.299 3-1.48V8.35zm1 0v3.17c2.134.181 3 1.48 3 1.48a3.5 3.5 0 0 0-1.989-3.158C8.978 9.586 8.5 9.052 8.5 8.351z"/>
+									</svg>
+								</div>
+							</div>
+							<div class="col"></div>
+							<div class="text-center my-5">
+								<h1 class="">Ticket wird geprüft</h1>
+								<h5 class="my-2">Bitte warten...</h5>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ===== VALID ===== -->
+		<div class="modal" id="srd:valid" data-bs-backdrop="static">
+			<div class="modal-dialog modal-lg modal-fullscreen-md-down">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h4 class="modal-title">Ergebnis</h4>
+					</div>
+					<div class="modal-body text-bg-success">
+						<div class="row my-3">
+							<div class="col"></div>
+							<div class="col-8 col-md-6">
+								<div>
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-circle w-100 h-100" viewBox="0 0 16 16">
+										<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+										<path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
+									</svg>
+								</div>
+							</div>
+							<div class="col"></div>
+						</div>
+						<div class="text-center my-5">
+							<h1 class="display-1 mb-4"><b>Ticket gültig</b></h1>
+							<h5 class="my-2">ID: <span id="srd:valid:ticketToken"></span></h5>
+						</div>
+					</div>
+					<div class="modal-footer d-flex justify-content-evenly">
+						<button type="button" id="srd:valid:abort" class="col-5 mx-auto btn btn-lg btn-secondary" onclick="apiTicketAction('valid:cancel')">Abbrechen</button>
+						<button type="button" id="srd:valid:consume" class="col-5 mx-auto btn btn-lg btn-success" onclick="apiTicketAction('valid:consume')">Entwerten</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ===== INVALID ===== -->
+		<div class="modal" id="srd:invalid" data-bs-backdrop="static">
+			<div class="modal-dialog modal-lg modal-fullscreen-md-down">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h4 class="modal-title">Ergebnis</h4>
+					</div>
+					<div class="modal-body text-bg-danger">
+						<div class="row my-3">
+							<div class="col"></div>
+							<div class="col-8 col-md-6">
+								<div>
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-octagon w-100 h-100" viewBox="0 0 16 16">
+										<path d="M4.54.146A.5.5 0 0 1 4.893 0h6.214a.5.5 0 0 1 .353.146l4.394 4.394a.5.5 0 0 1 .146.353v6.214a.5.5 0 0 1-.146.353l-4.394 4.394a.5.5 0 0 1-.353.146H4.893a.5.5 0 0 1-.353-.146L.146 11.46A.5.5 0 0 1 0 11.107V4.893a.5.5 0 0 1 .146-.353L4.54.146zM5.1 1 1 5.1v5.8L5.1 15h5.8l4.1-4.1V5.1L10.9 1H5.1z"/>
+										<path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+									</svg>
+								</div>
+							</div>
+							<div class="col"></div>
+						</div>
+						<div class="text-center my-5">
+							<h1 class="display-1 mb-4"><b>Ticket ungültig</b></h1>
+							<h5 class="my-2">ID: <span id="srd:invalid:ticketToken"></span></h5>
+						</div>
+					</div>
+					<div class="modal-footer d-flex justify-content-evenly">
+						<button type="button" class="col-10 mx-auto btn btn-lg btn-secondary" onclick="apiTicketAction('invalid:confirm')">Okay</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Modal für den QR-Code Scanner -->
+		<div class="modal" id="QrCodeScanner" data-bs-backdrop="static">
+			<div class="modal-dialog modal-lg modal-fullscreen-md-down">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h4 class="modal-title">QR-Code Scannen</h4>
+						<button id="btnScanClose" type="button" class="btn-close" data-bs-dismiss="modal"></button>
+					</div>
+					<div class="modal-body p-0">
+						<div id="reader"></div>
+					</div>
+					<!--
+					<div class="modal-footer">
+						
+					</div>
+					-->
+				</div>
+			</div>
+		</div>
+
+		<!-- Info / Tutorial-Modal -->
+		<div class="modal fade" id="guide">
+			<div class="modal-dialog modal-xl modal-fullscreen-md-down">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h4 class="modal-title">Infos, Hilfe & Impressum</h4>
+						<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+					</div>
+					<div class="modal-body ">
+						<div class="accordion" id="guideAccordion">
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+										Verwendung Step-by-Step
+									</button>
+								</h2>
+								<div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#guideAccordion">
+									<div class="accordion-body">
+										<ol>
+											<li><b>Einige Hinweise vor der Benutzung:</b></li>
+												<ul class="mb-2">
+													<li>Du kannst diese Seite wie eine App installieren und verwenden. Dafür benötigst du einen aktuellen Browser wie Chrome oder Firefox. Gehe zum installieren in das <i class="bi bi-three-dots-vertical"></i> Menü und klicke auf "Installieren". <a href="https://support.google.com/chrome/answer/9658361?hl=de&co=GENIE.Platform%3DAndroid&oco=1&sjid=13598844559025570741-EU" target="_blank" rel="noreferrer noopener">Weitere Informationen.</a></li>
+													<li>Zur Verwendung ist eine Kamera und Zugriff auf diese Kamera, sowie eine Internetverbindung zwingend notwendig. Keine Sorge, deine Kamera wird natürlich nur zum Scannen von QR-Codes verwendet.</li>
+													<li>Möglicherweise zeigt dein Gerät an, dass deine Kamera auch nach einem Scan weiterhin aktiv ist. Deine Kamera wird jedoch nur verwendet, solange die entsprechende Vorschau sichtbar ist.</li>
+													<li>Der Status "Fehler" bedeutet nicht das Ende: meistens kannst du es (nachdem der Fehler behoben wurde) einfach nochmal probieren. Du musst die App nur bei schweren Fehlern (z. B. eingefroren) neu starten bzw. die Seite aktualisieren (<i class="bi bi-arrow-clockwise"></i>).</li>
+												</ul>
+											<li><b>Verbindung zur Ticket-Datenbank herstellen:</b></li>
+											<ul>
+												<li>Verbindungscode ist vorhanden.<br>
+												<p class="my-0">
+													Ideal! Dann kannst du auf "Scan Connect" klicken und den QR-Code scannen. Anschließend wird die Verbindung automatisch hergestellt. Wenn alles geklappt hat, ändert sich der Status zu "Bereit".
+												</p></li>
+											</ul> <!-- terminate list to move "ODER" a indentaion level above -->
+											<b>ODER</b>
+											<ul>
+												<li>Verbindungscode ist nicht vorhanden. (Nicht Empfohlen)<br>
+												<p>
+													Dann musst du leider die Daten der Ticket-Datenbank selber eingeben / einfügen. Klicke dazu auf "Manuelle Eingabe", es werden nun zwei Eingabefelder angezeigt.<br>
+													In das Feld "URL" muss die vollständige URL des Servers mit der Datenbank, inklusive "https" und Portnummer, eingetragen werden.<br>
+													Die URL könnte zum Beispiel so aussehen: <code>https://example.com:5000</code><br>
+													In das Feld "Zugangsschlüssel" muss eine 40 Zeichen lange Kette aus Buchstaben und Zahlen - dein Zugangsschlüssel - eingetragen werden.<br>
+													Ein Zugangsschlüssel kann zum Beispiel so aussehen: <code>0001yTK0E7JjPYcjXZI70jMTUYIKVf6WaqFPsjQY</code><br>
+													Sobald du alles eingetragen hast, klicke auf "Verbinden". Die App versucht nun eine Verbindung zur Datenbank herzustellen. Wenn alles geklappt hat, ändert sich der Status zu "Bereit".
+												</p></li>
+											</ul>
+											<li><b>Tickets scannen:</b><br>
+											<p>
+												Wenn der Status auf "Bereit" steht, kannst du mit dem Ticketscannen beginnen. Sobald du mit dem QR-Code Scanner ein Ticket gescannt hast, kontaktiert die App die Datenbank und prüft das Ticket.<br>
+												Daraufhin wird dir das Ergebnis angezeigt. Ist das Ticket gültig, ist es allerdings noch <b>nicht</b> entwertet. Um das Ticket tatsächlich zu entwerten, klicke bitte auf den Entsprechenden Knopf in der Ergebnis-Anzeige.<br>
+												Die App kontaktiert nun erneut die Datenbank um das Ticket zu entwerten. Wenn alles klappt, wirst du zurück zum Scanner geleitet und bist sofort bereit weitere Tickets zu scannen. Sollte beim Entwerten ein Fehler passieren, wird das entsprechend angezeigt und in der Chronik vermerkt.<br>
+												Die Chronik speichert die letzten 10 Ereignisse, inklusive Uhrzeit, Ticket-ID und was tatsächlich passiert ist. Die Ticket-ID wird, zwecks lesbarkeit, auf kleinen Bildschirmen auf die letzten vier Stellen gekürzt.<br>
+											</p></li>
+										</ol>
+									</div>
+								</div>
+							</div>
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+										???
+									</button>
+								</h2>
+								<div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+									<div class="accordion-body">
+										<strong>This is the second item's accordion body.</strong> It is hidden by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+									</div>
+								</div>
+							</div>
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+										Impressum?
+									</button>
+								</h2>
+								<div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+									<div class="accordion-body">
+										<strong>This is the third item's accordion body.</strong> It is hidden by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+									</div>
+							  	</div>
+							</div>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,48 @@
+@startuml Sequenzdiagramm_App
+
+title Sequenzdiagramm App
+!theme crt-amber
+
+actor "Nutzer" as user
+participant App as app
+participant "QR-Code Scanner" as scanner
+database "REST API" as api
+
+autonumber
+
+== Initialisierung ==
+
+user -> app++: DB-Scan auslösen
+app -> scanner++: scan starten
+scanner -> app--: Scanergebnis: API URL/Zugangsdaten
+' Error handling!
+app -> api++: Verbindung Testen
+api -> app--: Rückmeldung
+
+alt API initialisiert
+    app -> user: Verbindung erfolgreich, Token gültig
+else Fehler
+    app -> user: Fehlermeldung
+end
+
+== Hauptschleife ==
+
+user -> app: Ticket-Scan auslösen
+loop
+    app -> scanner++: scan starten
+    scanner -> app--: Scanergebnis: Ticketnummer
+    app -> api++: Ticketnummer prüfen
+    api -> app--: Antwort
+    app -> user: Ergebnis anzeigen
+    alt Ticket entwerten
+        user -> app: Ticket entwerten
+        app -> api++: Ticket entwerten
+        api -> app--: Ergebnis
+        app -> user: Rückmeldung
+    else Ticket nicht entwerten
+        user -> app: Abbrechen
+        app -> user: Rückmeldung
+    end
+end
+deactivate app
+@enduml

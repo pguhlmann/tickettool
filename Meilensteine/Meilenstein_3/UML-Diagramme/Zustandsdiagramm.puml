@@ -1,0 +1,27 @@
+@startuml Zustandsdiagramm_App
+
+title Zustandsdiagramm App / Gekürzt, ohne Fehlerzustand
+!theme crt-amber
+
+hide empty description
+
+state "Offline" as offline
+state "Verbindet" as connecting
+state "Bereit" as ready
+state "Ticket scannen" as scanning
+state "Ergebnis anzeigen" as result
+
+
+[*] --> offline : öffnen
+offline --> connecting : manuelle Eingabe
+offline --> connecting : Verbindungscode scannen
+connecting --> ready : Ergebnis: Erfolg
+ready --> scanning : "Start"
+scanning --> result : Scan erfolgreich
+scanning --> scanning : Scan nicht erfolgreich
+scanning --> ready : "Stop"
+result --> scanning : Nutzerreaktion: Entwerten/Ignorieren
+ready --> connecting : Verbindung neu eingeben (Scan/manuell)
+ready --> [*] : schließen
+
+@enduml

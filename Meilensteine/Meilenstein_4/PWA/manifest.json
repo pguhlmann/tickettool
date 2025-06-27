@@ -1,0 +1,19 @@
+{
+  "lang": "de-de",
+  "name": "Ticketscanner",
+  "short_name": "Ticketscanner",
+  "description": "Der Ticketscanner für [TBD].",
+  "start_url": "/",
+  "background_color": "#212529",
+  "theme_color": "#212529",
+  "orientation": "portrait",
+  "display": "standalone",
+  "icons": [
+    {
+        "src": "icon.png",
+        "sizes": "any",
+        "type": "image/png",
+        "purpose": "any maskable"
+    }
+  ]
+}

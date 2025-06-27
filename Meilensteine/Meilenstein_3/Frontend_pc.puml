@@ -1,0 +1,96 @@
+@startuml frontend_pc
+
+' === frontend pc ===
+package frontend_pc{
+
+
+
+        ' QR Generator
+    class QR_Generator {
+        - ticket_token: string
+        - ticket_number: int
+        __public methods__
+        + generate_qr_code_from_token: string
+        
+    }
+
+    ' PDF Generator
+    class PDF_Generator {
+        - qr_code_from_token: png
+        - pdf_layout: html
+        - ticket_number: int
+        - event_location: string
+        - event_start_time: time
+        - event_start_date: date
+        - event_name: string
+        - event_price: float
+        __public methods__
+        + generate_pdf_ticket_from_data: pdf
+        
+    }
+
+        ' connector
+    class Connector {
+        - host_id: string
+        - user_token: string
+        - event_name: string
+        - event_start_date: date
+        - event_start_time: time
+        - event_ticket_amount: int
+        - event_location: string
+        - event_price: float
+        - user_name: string
+        - event_id: int
+        - user_token:string
+
+        __public methods__
+        + send_event_details: void
+        + get_user_token: string
+        + get_event_name: string
+        + get_event_start_date: date
+        + get_event_start_time: time
+        + get_event_ticket_amount: int
+        + get_event_location: string
+        + get_event_price: float
+        + get_user_name: string
+        + get_event_id: int 
+        + get_new_eventscan_user_token: string
+        + create_user: string
+        + delete_event: void
+        
+    }
+
+
+
+
+
+    ' ClientGUI
+    class ClientGUI {
+        - client: Connector
+        __public method__
+        + showClientGUI(): void
+    }
+
+   
+
+    ' Interaktionen
+    Connector -d-> QR_Generator
+    QR_Generator -d-> PDF_Generator
+    Connector -d-> PDF_Generator
+
+    Connector <-r- ClientGUI : < graphische Benutzeroberfläche
+
+
+}
+
+' Blackbox
+package REST_API {}
+
+
+
+
+
+' Interaktionen
+Connector -u- REST_API: exchange Data
+
+@enduml

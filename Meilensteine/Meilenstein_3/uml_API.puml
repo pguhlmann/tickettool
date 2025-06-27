@@ -1,0 +1,76 @@
+@startuml API
+class Frontend_Desktopapp {}
+class Frontend_APP {}
+() Datenbank #DA70D6
+
+package API{
+    
+    class Event{
+        - id : Int
+        - name : String
+        - date : Date
+        - time : Time
+        - ticket_amount : Int
+        - place : String
+        - price : Float
+        - artist : String
+        __public methods__
+        + Create(name:String, date:Date, time:Time, ticket_count:Int, place:String, price:Float, artist:String) : boolean
+        + Delete(VA_id:Int) : boolean
+        + Edit(VA_id:Int, VA_name:String, VA_date:Date, VA_time:Time, VA_ticket_count:Int, VA_place:String, VA_price:Float, artist:String) : boolean
+        + Event_query(user_token:String) : []eventinformation
+        
+        'wenn Zeit am Ende übrig ist
+        + Access_rights(user_token:String, edit_user_name:String) : boolean
+        + Event_user(VA_id:Int) : []userinformation
+
+    }
+
+    class User_Management{
+        - name :String
+        - user_Token : String
+
+        __public methods__
+        + User_create(name:String) : user_token :String 
+        + User_edit(user_token:String, edit_user_name:String, editing_type: Int) : boolean
+        + User_read(user_Token:String) : []username
+
+        __private method__
+        - Generator() : Token:String
+    }
+
+    class Key_Management{
+        - key_token : String
+        __public methods__
+        + Verify(key_token:String) : boolean
+        + Devaluate(key_oken:String)
+        + Key_Generation(VA_id:Int, ticket_count: Int): []key_token : String
+        __private method__
+        - Generator(VA_id:Int) : String
+    }
+
+    class util{
+        - DB_logindata : String
+        - DB_Address : String
+        __public methods__
+        + Start_Admin() : void
+        + DB_Creation(DB_logindata:String, DB_address:String): boolean
+        + DB_Connection(DB_logindata:String, DB_address:String): boolean
+    }
+}
+Frontend_APP -u- Key_Management : ticket validation
+Frontend_APP -u- User_Management : user validation
+
+Frontend_Desktopapp -u- Key_Management : key generation 
+Frontend_Desktopapp -u- User_Management : user management
+Frontend_Desktopapp -u- Event : event management 
+
+Key_Management -u- Datenbank 
+User_Management -u- Datenbank 
+Event -u- Datenbank 
+util -u- Datenbank 
+
+Event -u- User_Management 
+Event -u- Key_Management
+
+@enduml

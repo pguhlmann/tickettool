@@ -1,0 +1,27 @@
+@startuml Klassendiagramm_App
+
+title Klassendiagramm App
+!theme crt-amber
+
+app *-- qr
+app *-- api
+
+class "App/UI" as app {
+  scanDBCode()
+  scanTicket()
+  displayResult()
+}
+
+class "QR-Code-Scanner" as qr {
+  startScan()
+}
+
+class "DB-Kommunikation" as api {
+  URL serverLocation
+  String token
+  setCredentials()
+  testConnection()
+  checkTicket()
+  invalidateTicket()
+}
+@enduml
